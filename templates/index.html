@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LoanSense · Loan Eligibility Dashboard</title>
+  <meta name="description" content="Check loan approval odds instantly with an explainable machine learning model.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% set m = insights.metrics.test_set if insights.metrics else None %}
+<div class="shell">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <a class="brand" href="#overview">
+      <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M5 13l4 4 10-11"/></svg></span>
+      <span>LoanSense</span>
+    </a>
+    <nav class="side-nav" aria-label="Sections">
+      <span class="nav-label">Menu</span>
+      <a href="#overview" class="active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>Overview</a>
+      <a href="#check">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Eligibility check</a>
+      <a href="#explore">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg>What-if explorer</a>
+      <a href="#scenarios">
+        <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>Scenarios</a>
+      <a href="#insights">
+        <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>Data insights</a>
+      <a href="#model">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Model</a>
+    </nav>
+    <div class="side-card">
+      <div class="sc-row"><span class="live-dot"></span>Model live</div>
+      <b>{{ '%.1f' % (m.accuracy * 100) if m else '--' }}%</b>
+      <span>test accuracy · Logistic Regression trained on {{ insights.dataset.rows }} applications</span>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main" id="overview">
+    <header class="topbar">
+      <div class="tb-title">
+        <h1>Loan eligibility overview</h1>
+        <p>Adjust the application and every number on this page updates live.</p>
+      </div>
+      <div class="tb-actions">
+        <div class="presets" role="group" aria-label="Example applicants">
+          <button type="button" class="chip" data-preset="strong">Strong</button>
+          <button type="button" class="chip" data-preset="borderline">Borderline</button>
+          <button type="button" class="chip" data-preset="risky">High risk</button>
+        </div>
+        <button type="button" class="icon-btn" id="resetBtn" aria-label="Reset application" title="Reset">
+          <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button type="button" class="icon-btn" id="themeToggle" aria-label="Switch colour theme" title="Theme">
+          <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI row -->
+    <section class="kpis" aria-label="Key figures">
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon blue"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12l6-6"/></svg></span>Approval odds</div>
+        <div class="kpi-body">
+          <b id="kpiOdds">--</b>
+          <span class="trend" id="kpiOddsDelta">live</span>
+        </div>
+        <svg class="spark" id="kpiSpark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"></svg>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon violet"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h3"/></svg></span>Monthly EMI <small>at 9% p.a.</small></div>
+        <div class="kpi-body"><b id="emiValue">--</b></div>
+        <span class="kpi-foot" id="kpiTerm">over 30 years</span>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon amber"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>EMI to income</div>
+        <div class="kpi-body"><b id="ratioValue">--</b><span class="trend" id="ratioBadge">--</span></div>
+        <i class="meter"><em id="ratioBar"></em></i>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon teal"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l7-6 7 6v11"/><path d="M10 21v-6h4v6"/></svg></span>Loan to yearly income</div>
+        <div class="kpi-body"><b id="kpiLti">--</b></div>
+        <span class="kpi-foot" id="kpiLtiFoot">--</span>
+      </div>
+    </section>
+
+    <!-- Form + result -->
+    <section class="row row-main" id="check">
+      <form class="card form-card" id="loanForm" novalidate autocomplete="off">
+        <div class="card-head">
+          <div><h2>Application details</h2><p>Credit history, income and loan</p></div>
+        </div>
+
+        <div class="choice-cards" role="radiogroup" aria-label="Credit history">
+          <label class="choice-card">
+            <input type="radio" name="Credit_History" value="1" checked>
+            <span class="cc-body">
+              <span class="cc-icon good"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+              <span><b>Credit history meets guidelines</b><small>On-time repayments, no defaults</small></span>
+            </span>
+          </label>
+          <label class="choice-card">
+            <input type="radio" name="Credit_History" value="0">
+            <span class="cc-body">
+              <span class="cc-icon bad"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z"/><path d="M12 8v5M12 16h.01"/></svg></span>
+              <span><b>Doesn't meet guidelines</b><small>Missed payments or defaults</small></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="slider-field">
+          <div class="sf-top">
+            <label for="ApplicantIncome">Your monthly income</label>
+            <div class="money-input"><span>₹</span><input type="number" id="ApplicantIncome" name="ApplicantIncome" min="0" max="100000" step="100" value="5000" inputmode="numeric"></div>
+          </div>
+          <input type="range" class="range" data-for="ApplicantIncome" min="0" max="25000" step="100" value="5000" aria-label="Your monthly income slider">
+        </div>
+        <div class="slider-field">
+          <div class="sf-top">
+            <label for="CoapplicantIncome">Co-applicant monthly income</label>
+            <div class="money-input"><span>₹</span><input type="number" id="CoapplicantIncome" name="CoapplicantIncome" min="0" max="50000" step="100" value="1500" inputmode="numeric"></div>
+          </div>
+          <input type="range" class="range" data-for="CoapplicantIncome" min="0" max="15000" step="100" value="1500" aria-label="Co-applicant income slider">
+        </div>
+        <div class="slider-field">
+          <div class="sf-top">
+            <label for="LoanAmount">Loan amount <small>(thousands)</small></label>
+            <div class="money-input"><span>₹</span><input type="number" id="LoanAmount" name="LoanAmount" min="1" max="700" step="1" value="128" inputmode="numeric"><span>K</span></div>
+          </div>
+          <input type="range" class="range" data-for="LoanAmount" min="10" max="600" step="1" value="128" aria-label="Loan amount slider">
+          <p class="hint" id="loanHint"></p>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="termLabel">Repayment term</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="termLabel">
+            {% for months in [60, 120, 180, 240, 300, 360, 480] %}
+            <label><input type="radio" name="Loan_Amount_Term" value="{{ months }}" {% if months == 360 %}checked{% endif %}><span>{{ months // 12 }}y</span></label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <span class="field-label" id="areaLabel">Property area</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="areaLabel">
+              <label><input type="radio" name="Property_Area" value="Urban"><span>Urban</span></label>
+              <label><input type="radio" name="Property_Area" value="Semiurban" checked><span>Semi-urban</span></label>
+              <label><input type="radio" name="Property_Area" value="Rural"><span>Rural</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="depLabel">Dependents</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="depLabel">
+              {% for d in ['0', '1', '2', '3+'] %}
+              <label><input type="radio" name="Dependents" value="{{ d }}" {% if d == '0' %}checked{% endif %}><span>{{ d }}</span></label>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="eduLabel">Education</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="eduLabel">
+              <label><input type="radio" name="Education" value="Graduate" checked><span>Graduate</span></label>
+              <label><input type="radio" name="Education" value="Not Graduate"><span>Not graduate</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="marLabel">Marital status</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="marLabel">
+              <label><input type="radio" name="Married" value="Yes" checked><span>Married</span></label>
+              <label><input type="radio" name="Married" value="No"><span>Single</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="empLabel">Employment</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="empLabel">
+              <label><input type="radio" name="Self_Employed" value="No" checked><span>Salaried</span></label>
+              <label><input type="radio" name="Self_Employed" value="Yes"><span>Self-employed</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="genLabel">Gender</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="genLabel">
+              <label><input type="radio" name="Gender" value="Male" checked><span>Male</span></label>
+              <label><input type="radio" name="Gender" value="Female"><span>Female</span></label>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div class="col">
+        <div class="card result-card" id="result" aria-live="polite">
+          <div class="card-head">
+            <div><h2>Prediction</h2><p>Approval threshold is 50%</p></div>
+            <span class="verdict-pill" id="verdictPill">Calculating…</span>
+          </div>
+          <div class="gauge-wrap">
+            <svg class="gauge" viewBox="0 0 240 148" role="img" aria-labelledby="gaugeText">
+              <path class="gauge-track" d="M20 120 A100 100 0 0 1 220 120" pathLength="100"/>
+              <path class="gauge-fill" id="gaugeFill" d="M20 120 A100 100 0 0 1 220 120" pathLength="100"/>
+              <line class="gauge-tick" x1="120" y1="8" x2="120" y2="30"/>
+              <text class="gauge-scale" x="20" y="146" text-anchor="middle">0%</text>
+              <text class="gauge-scale" x="120" y="46" text-anchor="middle">50%</text>
+              <text class="gauge-scale" x="220" y="146" text-anchor="middle">100%</text>
+            </svg>
+            <div class="gauge-center">
+              <span class="gauge-value" id="probValue">--</span>
+              <span class="gauge-label" id="gaugeText">approval odds</span>
+            </div>
+          </div>
+          <p class="verdict-text" id="verdictText">Adjust any detail and the prediction updates live.</p>
+          <button type="button" class="btn-outline" id="saveBtn">
+            <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>Save scenario to compare
+          </button>
+          <p class="error-msg" id="errorMsg" role="alert" hidden></p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><h2>What's driving this</h2><p>Compared with the average applicant</p></div>
+            <span class="legend"><i class="sw up"></i>Helps <i class="sw down"></i>Hurts</span>
+          </div>
+          <ul class="factor-list" id="factorList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Explorer -->
+    <section class="row row-explore" id="explore">
+      <div class="card map-card">
+        <div class="card-head">
+          <div><h2>Approval map</h2><p>Monthly income × loan amount. Click a cell to try it.</p></div>
+          <div class="heat-legend" aria-hidden="true"><span>0%</span><i></i><span>100%</span></div>
+        </div>
+        <div class="map-wrap"><svg id="heatmap" class="heatmap" viewBox="0 0 560 380" role="img" aria-label="Approval odds for each combination of monthly income and loan amount"></svg></div>
+        <p class="footnote">The ring marks your application. The dark outline separates approved from rejected.</p>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="card-head"><div><h2>Ways to boost your odds</h2><p>Tap a suggestion to apply it</p></div></div>
+          <div id="boostList" class="boost-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2>Odds vs loan amount</h2><p>Click the chart to set a value</p></div><span class="chart-now" id="loanNow"></span></div>
+          <svg id="loanCurve" class="curve" viewBox="0 0 420 190" role="img" aria-label="Approval odds as the loan amount changes"></svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="row row-3">
+      <div class="card">
+        <div class="card-head"><div><h2>Odds vs monthly income</h2><p>Click the chart to set a value</p></div><span class="chart-now" id="incomeNow"></span></div>
+        <svg id="incomeCurve" class="curve" viewBox="0 0 420 190" role="img" aria-label="Approval odds as monthly income changes"></svg>
+      </div>
+      <div class="card scenarios-card" id="scenarios">
+        <div class="card-head">
+          <div><h2>Saved scenarios <small id="scenarioCount">0 of 4</small></h2><p>Compare versions of your application</p></div>
+          <button type="button" class="link-btn" id="clearScenarios" hidden>Clear all</button>
+        </div>
+        <div class="scenario-list" id="scenarioList"></div>
+      </div>
+    </section>
+
+    <!-- Insights -->
+    <section class="row row-insights" id="insights">
+      <div class="card donut-card">
+        <div class="card-head"><div><h2>Approval rate</h2><p>All {{ insights.dataset.rows }} past applications</p></div></div>
+        {% set rate = insights.dataset.approval_rate %}
+        {% set approved = (rate * insights.dataset.rows) | round | int %}
+        <div class="donut-wrap">
+          <svg class="donut" viewBox="0 0 120 120" role="img" aria-label="{{ '%.0f' % (rate * 100) }}% approved">
+            <circle class="donut-track" cx="60" cy="60" r="48" pathLength="100"/>
+            <circle class="donut-fill" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="{{ '%.1f' % (rate * 100 - 1.5) }} 100"/>
+          </svg>
+          <div class="donut-center"><b>{{ '%.0f' % (rate * 100) }}%</b><span>approved</span></div>
+        </div>
+        <ul class="donut-legend">
+          <li><i class="sw accent"></i>Approved <b>{{ approved }}</b></li>
+          <li><i class="sw muted"></i>Rejected <b>{{ insights.dataset.rows - approved }}</b></li>
+        </ul>
+      </div>
+      <div class="card segments-card">
+        <div class="card-head"><div><h2>Approval rate by group</h2><p>Hover a bar for counts</p></div></div>
+        <div class="segment-grid" id="segmentGrid"></div>
+      </div>
+    </section>
+
+    <!-- Model -->
+    {% if insights.metrics %}
+    {% set cm = m.confusion_matrix %}
+    <section class="row row-model" id="model">
+      <div class="card">
+        <div class="card-head"><div><h2>Model performance</h2><p>Held-out test set of {{ cm[0][0] + cm[0][1] + cm[1][0] + cm[1][1] }} applications</p></div></div>
+        <div class="metric-tiles">
+          <div><span>Accuracy</span><b>{{ '%.1f' % (m.accuracy * 100) }}%</b></div>
+          <div><span>ROC-AUC</span><b>{{ '%.2f' % m.roc_auc }}</b></div>
+          <div><span>Precision</span><b>{{ '%.2f' % m.precision }}</b></div>
+          <div><span>Recall</span><b>{{ '%.2f' % m.recall }}</b></div>
+        </div>
+        <div class="confusion" aria-label="Confusion matrix">
+          <span></span><span class="cm-h">Predicted reject</span><span class="cm-h">Predicted approve</span>
+          <span class="cm-h">Actually rejected</span><span class="cm-cell ok">{{ cm[0][0] }}</span><span class="cm-cell">{{ cm[0][1] }}</span>
+          <span class="cm-h">Actually approved</span><span class="cm-cell">{{ cm[1][0] }}</span><span class="cm-cell ok">{{ cm[1][1] }}</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h2>Model comparison</h2><p>5-fold cross-validation on the training set</p></div></div>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>Model</th><th>Accuracy</th><th>F1</th><th>ROC-AUC</th></tr></thead>
+            <tbody>
+            {% for name, s in insights.metrics.cv_baselines.items() %}
+              <tr class="{{ 'chosen' if name == 'logistic_regression' else '' }}">
+                <td>{{ name.replace('_', ' ').title() }}{% if name == 'logistic_regression' %} <em>Deployed</em>{% endif %}</td>
+                <td>{{ '%.3f' % s.accuracy }}</td><td>{{ '%.3f' % s.f1 }}</td><td>{{ '%.3f' % s.roc_auc }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <ol class="pipeline">
+          <li><b>Clean</b><span>Fill missing values</span></li>
+          <li><b>Engineer</b><span>EMI, income ratios</span></li>
+          <li><b>Transform</b><span>Scale and encode</span></li>
+          <li><b>Predict</b><span>Logistic Regression</span></li>
+          <li><b>Explain</b><span>Factor contributions</span></li>
+        </ol>
+      </div>
+    </section>
+    {% endif %}
+
+    <footer class="footer">
+      <span>Built with Python, scikit-learn, Pandas, NumPy and Flask.</span>
+      <span>Predictions are for education only, not financial advice.</span>
+    </footer>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+<div class="sticky-bar" id="stickyBar" hidden>
+  <span class="sb-dot" id="sbDot"></span>
+  <span class="sb-text"><b id="sbValue">--</b><span id="sbVerdict">approval odds</span></span>
+  <a href="#result" class="sb-btn">See details</a>
+</div>
+
+<script id="insightsData" type="application/json">{{ insights | tojson }}</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
