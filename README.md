@@ -7,6 +7,10 @@ real-time approval predictions.
 
 **Tech stack:** Python · Scikit-learn · Flask · Pandas · NumPy
 
+**Live demo:** https://ranjithiyer05.github.io/loan-eligibility-predictor/
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Ranjithiyer05/loan-eligibility-predictor)
+
 ![LoanSense web app](reports/app_screenshot.png)
 
 ## The app: LoanSense
@@ -159,8 +163,30 @@ to sensible defaults.
 python -m pytest
 ```
 
+## Deployment
+
+### Flask app on Render (free)
+
+The repo includes [`render.yaml`](render.yaml), so Render sets everything up for you:
+
+1. Click **Deploy to Render** above and sign in with GitHub.
+2. Confirm the `loansense` web service and click **Apply**.
+3. When the build finishes, open the `https://loansense-xxxx.onrender.com` URL Render shows.
+
+It builds with `pip install -r requirements.txt` and serves the app with
+`gunicorn app:app`. Free instances sleep after 15 minutes without traffic, so the first
+visit after that takes about a minute to wake up. The [`Procfile`](Procfile) works the
+same way on Railway or Heroku.
+
+### Static demo on GitHub Pages
+
+[`docs/index.html`](docs/index.html) is a self-contained build of the dashboard where the
+trained model's coefficients run in the browser, so it needs no server. To publish it, open
+the repo's **Settings → Pages**, choose **Deploy from a branch**, pick `main` and the
+`/docs` folder, and save. It goes live at
+`https://ranjithiyer05.github.io/loan-eligibility-predictor/` within a minute or two.
+
 ## Possible extensions
 
-- Deploy on Render or Railway with `gunicorn app:app`
 - Add SHAP explanations so each prediction shows why it was approved or rejected
 - Build a Power BI dashboard on the dataset to show approval rates by segment

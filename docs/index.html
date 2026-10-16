@@ -1,0 +1,1551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Static demo for GitHub Pages: the trained model's parameters run in the browser. Regenerate after retraining. -->
+<title>LoanSense · Loan Eligibility Dashboard</title>
+<meta name="description" content="Check loan approval odds instantly with an explainable machine learning model.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+/* LoanSense: light SaaS dashboard. Sidebar + top bar, white cards on a cool grey canvas, one blue accent. */
+:root {
+  color-scheme: light;
+  --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 18px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --surface-2: #f7f8fb;
+  --border: #e8ebf1;
+  --text: #111827;
+  --text-2: #5a6376;
+  --text-3: #9aa2b4;
+  --accent: #3a63f3;
+  --accent-soft: #edf1ff;
+  --accent-2: #7a95ff;
+  --good: #16a34a;
+  --good-soft: #e8f7ee;
+  --bad: #e5484d;
+  --bad-soft: #fdecec;
+  --warn: #f59e0b;
+  --warn-soft: #fef4e2;
+  --violet: #8b5cf6; --violet-soft: #f1ecfe;
+  --teal: #0ea5a4; --teal-soft: #e3f6f5;
+  --track: #eef1f6;
+  --heat-mid: #eef0f5;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .05);
+  --shadow-lg: 0 12px 32px -12px rgba(16, 24, 40, .18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d1017; --surface: #151922; --surface-2: #1a1f2a; --border: #252b38;
+    --text: #eef1f7; --text-2: #a8b0c2; --text-3: #6c7489;
+    --accent: #5b7fff; --accent-soft: #1d2540; --accent-2: #8aa2ff;
+    --good: #34c46c; --good-soft: #15291f; --bad: #f2676b; --bad-soft: #321b1e;
+    --warn: #f5b13d; --warn-soft: #33281a; --violet: #a585ff; --violet-soft: #241d3a;
+    --teal: #2cc3c1; --teal-soft: #142c2c; --track: #222836; --heat-mid: #262c3a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3); --shadow-lg: 0 16px 40px -14px rgba(0, 0, 0, .6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1017; --surface: #151922; --surface-2: #1a1f2a; --border: #252b38;
+  --text: #eef1f7; --text-2: #a8b0c2; --text-3: #6c7489;
+  --accent: #5b7fff; --accent-soft: #1d2540; --accent-2: #8aa2ff;
+  --good: #34c46c; --good-soft: #15291f; --bad: #f2676b; --bad-soft: #321b1e;
+  --warn: #f5b13d; --warn-soft: #33281a; --violet: #a585ff; --violet-soft: #241d3a;
+  --teal: #2cc3c1; --teal-soft: #142c2c; --track: #222836; --heat-mid: #262c3a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3); --shadow-lg: 0 16px 40px -14px rgba(0, 0, 0, .6);
+}
+
+/* ============ Base ============ */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; font-family: var(--font); font-size: 14px; line-height: 1.5;
+  color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; letter-spacing: -.015em; line-height: 1.2; text-wrap: balance; }
+p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+b, .num { font-variant-numeric: tabular-nums; }
+
+/* ============ Shell ============ */
+.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+.sidebar {
+  position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 24px;
+  padding: 22px 16px; background: var(--surface); border-right: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px; font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
+.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--accent); color: #fff; }
+.brand-mark svg { width: 18px; height: 18px; stroke-width: 3; }
+.side-nav { display: grid; gap: 2px; }
+.nav-label { padding: 0 12px 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.side-nav a {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px;
+  color: var(--text-2); font-weight: 600; transition: background .2s, color .2s;
+}
+.side-nav a svg { width: 19px; height: 19px; flex: none; }
+.side-nav a:hover { background: var(--surface-2); color: var(--text); }
+.side-nav a.active { background: var(--accent-soft); color: var(--accent); }
+.side-card {
+  margin-top: auto; display: grid; gap: 4px; padding: 16px; border-radius: 16px;
+  background: linear-gradient(150deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--violet)));
+  color: #fff;
+}
+.side-card .sc-row { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; opacity: .9; }
+.side-card b { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.side-card > span { font-size: 12px; opacity: .85; }
+.live-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #7dffb0; }
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: #7dffb0; animation: ping 1.8s var(--ease) infinite; }
+@keyframes ping { to { transform: scale(2.6); opacity: 0; } }
+
+.main {
+  display: grid; gap: 20px; align-content: start; min-width: 0;
+  padding-block: 24px 32px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px));
+}
+
+/* ============ Top bar ============ */
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.tb-title h1 { font-size: 24px; font-weight: 800; }
+.tb-title p { margin-top: 4px; color: var(--text-2); }
+.tb-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.presets { display: flex; padding: 4px; gap: 2px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.chip { padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 600; color: var(--text-2); transition: .2s var(--ease); }
+.chip:hover { color: var(--accent); background: var(--accent-soft); }
+.chip:active { transform: scale(.96); }
+.icon-btn {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2); box-shadow: var(--shadow); transition: .2s;
+}
+.icon-btn:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn .sun { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .icon-btn .sun { display: block; } :root:not([data-theme="light"]) .icon-btn .moon { display: none; } }
+:root[data-theme="dark"] .icon-btn .sun { display: block; }
+:root[data-theme="dark"] .icon-btn .moon { display: none; }
+
+/* ============ Cards ============ */
+.card {
+  position: relative; min-width: 0; padding: 20px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.card-head h2 { font-size: 16px; font-weight: 700; }
+.card-head h2 small { margin-left: 6px; color: var(--text-3); font-weight: 600; font-size: 12px; }
+.card-head p { margin-top: 3px; color: var(--text-3); font-size: 12.5px; }
+.row { display: grid; gap: 20px; align-items: start; }
+.row-main { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.row-explore { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.row-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+.row-insights { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); }
+.row-model { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.col { display: grid; gap: 20px; min-width: 0; }
+
+/* ============ KPI tiles ============ */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.kpi { display: grid; gap: 12px; align-content: start; transition: transform .25s var(--ease), box-shadow .25s; }
+.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.kpi-head { display: flex; align-items: center; gap: 10px; color: var(--text-2); font-weight: 600; font-size: 13px; }
+.kpi-head small { color: var(--text-3); font-weight: 500; }
+.kpi-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; flex: none; }
+.kpi-icon svg { width: 18px; height: 18px; }
+.kpi-icon.blue { color: var(--accent); background: var(--accent-soft); }
+.kpi-icon.violet { color: var(--violet); background: var(--violet-soft); }
+.kpi-icon.amber { color: var(--warn); background: var(--warn-soft); }
+.kpi-icon.teal { color: var(--teal); background: var(--teal-soft); }
+.kpi-body { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.kpi-body b { font-size: 28px; font-weight: 800; letter-spacing: -.025em; }
+.kpi-foot { color: var(--text-3); font-size: 12.5px; font-weight: 500; }
+.trend {
+  display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 99px;
+  font-size: 12px; font-weight: 700; background: var(--track); color: var(--text-2);
+}
+.trend.up, .trend.good { background: var(--good-soft); color: var(--good); }
+.trend.down, .trend.bad { background: var(--bad-soft); color: var(--bad); }
+.trend.warn { background: var(--warn-soft); color: var(--warn); }
+.spark { width: 100%; height: 32px; overflow: visible; }
+.spark .sp-line { stroke: var(--accent); stroke-width: 2; fill: none; vector-effect: non-scaling-stroke; }
+.spark .sp-area { fill: var(--accent); opacity: .1; stroke: none; }
+.spark .sp-mid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.meter { display: block; height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.meter em { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--good); transition: width .6s var(--ease), background .3s; }
+
+/* ============ Form ============ */
+.choice-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+.choice-card { position: relative; cursor: pointer; }
+.choice-card input { position: absolute; opacity: 0; }
+.cc-body {
+  display: flex; align-items: center; gap: 12px; height: 100%; padding: 12px 14px;
+  border: 1.5px solid var(--border); border-radius: 14px; background: var(--surface); transition: .2s var(--ease);
+}
+.cc-body b { display: block; font-size: 13.5px; }
+.cc-body small { color: var(--text-3); font-size: 12px; }
+.cc-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; }
+.cc-icon svg { width: 19px; height: 19px; }
+.cc-icon.good { color: var(--good); background: var(--good-soft); }
+.cc-icon.bad { color: var(--bad); background: var(--bad-soft); }
+.choice-card:hover .cc-body { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.choice-card input:checked + .cc-body { border-color: var(--accent); background: var(--accent-soft); }
+.choice-card input:focus-visible + .cc-body { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.slider-field { margin-bottom: 20px; }
+.sf-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.sf-top label { font-weight: 600; font-size: 13.5px; color: var(--text-2); }
+.sf-top small { color: var(--text-3); font-weight: 500; }
+.money-input {
+  display: flex; align-items: center; gap: 2px; padding: 6px 12px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--border); font-weight: 700; transition: border-color .2s;
+}
+.money-input:focus-within { border-color: var(--accent); background: var(--surface); }
+.money-input span { color: var(--text-3); font-weight: 600; }
+.money-input input {
+  width: 78px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: right; outline: none;
+  font-variant-numeric: tabular-nums; -moz-appearance: textfield;
+}
+.money-input input::-webkit-inner-spin-button, .money-input input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.range {
+  --pct: 50%;
+  -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 99px; outline: none; cursor: pointer;
+  background: linear-gradient(var(--accent), var(--accent)) 0 / var(--pct) 100% no-repeat, var(--track);
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface); border: 4px solid var(--accent); box-shadow: 0 2px 8px rgba(58, 99, 243, .35);
+  transition: transform .15s var(--ease);
+}
+.range::-webkit-slider-thumb:hover, .range:active::-webkit-slider-thumb { transform: scale(1.15); }
+.range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 4px solid var(--accent); }
+.range:focus-visible { box-shadow: 0 0 0 4px var(--accent-soft); }
+.hint { margin-top: 10px; font-size: 12.5px; color: var(--text-3); }
+.hint b { color: var(--text-2); font-weight: 700; }
+
+.field { margin-bottom: 16px; }
+.field-label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 13.5px; color: var(--text-2); }
+.segmented { display: flex; padding: 3px; gap: 2px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--border); }
+.segmented label { flex: 1; position: relative; }
+.segmented input { position: absolute; opacity: 0; }
+.segmented span {
+  display: block; padding: 6px 4px; text-align: center; border-radius: 8px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; color: var(--text-3); white-space: nowrap; transition: .2s var(--ease);
+}
+.segmented span:hover { color: var(--text); }
+.segmented input:checked + span { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(16, 24, 40, .12); }
+.segmented input:focus-visible + span { outline: 2px solid var(--accent); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+
+/* ============ Prediction ============ */
+.verdict-pill {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px;
+  font-weight: 700; font-size: 12.5px; background: var(--track); color: var(--text-2); transition: .3s var(--ease);
+}
+.verdict-pill svg { width: 14px; height: 14px; stroke-width: 2.8; }
+.is-good .verdict-pill { background: var(--good-soft); color: var(--good); }
+.is-bad .verdict-pill { background: var(--bad-soft); color: var(--bad); }
+.gauge-wrap { position: relative; width: 100%; max-width: 300px; margin: 4px auto 0; }
+.gauge { display: block; width: 100%; height: auto; overflow: visible; }
+.gauge-track, .gauge-fill { fill: none; stroke-width: 18; stroke-linecap: round; }
+.gauge-track { stroke: var(--track); }
+.gauge-fill { stroke: var(--accent); stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1s var(--ease), stroke .4s; }
+.is-good .gauge-fill { stroke: var(--good); }
+.is-bad .gauge-fill { stroke: var(--bad); }
+.gauge-tick { stroke: var(--text-3); stroke-width: 2; }
+.gauge-scale { fill: var(--text-3); stroke: none; font-size: 11px; font-weight: 600; font-family: var(--font); }
+.gauge-center { position: absolute; left: 0; right: 0; bottom: 26px; display: flex; flex-direction: column; align-items: center; }
+.gauge-value { font-size: 44px; font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.gauge-label { margin-top: 4px; color: var(--text-3); font-size: 12px; font-weight: 600; }
+.verdict-text { margin: 14px auto 0; max-width: 340px; text-align: center; color: var(--text-2); font-size: 13.5px; }
+.btn-outline {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 16px; padding: 11px;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 13.5px;
+  transition: .2s var(--ease);
+}
+.btn-outline svg { width: 16px; height: 16px; }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.btn-outline:active { transform: scale(.98); }
+.btn-outline.saved { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--border)); background: var(--good-soft); }
+.error-msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-size: 13px; font-weight: 600; }
+.result-card.loading .gauge-value { opacity: .5; }
+
+.legend { display: flex; align-items: center; gap: 6px; color: var(--text-3); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-left: 4px; }
+.sw.up { background: var(--good); } .sw.down { background: var(--bad); }
+.sw.accent { background: var(--accent); } .sw.muted { background: var(--track); box-shadow: inset 0 0 0 1px var(--border); }
+
+.factor-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.factor { display: grid; grid-template-columns: 120px 1fr 46px; align-items: center; gap: 10px; font-size: 13px; cursor: default; }
+.factor-name { color: var(--text-2); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.factor-track { position: relative; height: 8px; border-radius: 99px; background: var(--surface-2); }
+.factor-track::before { content: ""; position: absolute; left: 50%; top: -4px; bottom: -4px; width: 1.5px; background: var(--border); }
+.factor-bar { position: absolute; top: 0; height: 100%; transition: width .7s var(--ease), left .7s var(--ease); }
+.factor-bar.up { background: var(--good); border-radius: 0 99px 99px 0; }
+.factor-bar.down { background: var(--bad); border-radius: 99px 0 0 99px; }
+.factor-val { font-size: 12.5px; font-weight: 700; text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.factor:hover .factor-name { color: var(--text); }
+
+/* ============ Boosts ============ */
+.boost-list { display: grid; gap: 10px; }
+.boost {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; text-align: left;
+  border-radius: 14px; border: 1px solid var(--border); background: var(--surface); transition: .2s var(--ease);
+}
+.boost:hover { border-color: var(--accent); background: var(--accent-soft); }
+.boost:active { transform: scale(.98); }
+.boost-icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--accent); background: var(--accent-soft); }
+.boost-icon svg { width: 17px; height: 17px; }
+.boost-text { flex: 1; font-size: 13.5px; font-weight: 700; }
+.boost-text small { display: block; color: var(--text-3); font-weight: 500; font-size: 12px; }
+.boost-delta { padding: 3px 8px; border-radius: 99px; font-weight: 700; font-size: 12px; color: var(--good); background: var(--good-soft); white-space: nowrap; }
+.boost-empty { padding: 14px; border-radius: 14px; background: var(--good-soft); color: var(--good); font-size: 13px; font-weight: 600; }
+
+/* ============ Charts ============ */
+.chart-now { flex: none; padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+.heat-legend { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-3); font-weight: 600; }
+.heat-legend i { width: 110px; height: 8px; border-radius: 99px; background: linear-gradient(90deg, var(--bad), var(--heat-mid) 50%, var(--good)); }
+.map-wrap { overflow-x: auto; }
+.heatmap, .curve { display: block; width: 100%; height: auto; overflow: visible; }
+.heatmap text, .curve text { stroke: none; }
+.heatmap .cell { stroke: var(--surface); stroke-width: 1.5; cursor: crosshair; transition: fill .5s var(--ease); }
+.heatmap .cell:hover { stroke: var(--text); stroke-width: 2; }
+.heatmap .boundary { fill: none; stroke: var(--text); stroke-width: 2.2; stroke-linejoin: round; opacity: .8; pointer-events: none; }
+.axis text { fill: var(--text-3); font-size: 11px; font-family: var(--font); font-weight: 500; }
+.axis .title { fill: var(--text-2); font-size: 11.5px; font-weight: 600; }
+.marker-ring { fill: none; stroke: var(--surface); stroke-width: 3.5; pointer-events: none; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .35)); }
+.marker-core { fill: var(--accent); stroke: var(--surface); stroke-width: 2.5; pointer-events: none; }
+.marker-pulse { fill: none; stroke: var(--accent); stroke-width: 2; pointer-events: none; transform-box: fill-box; transform-origin: center; animation: ringpulse 1.8s var(--ease) infinite; }
+@keyframes ringpulse { from { transform: scale(1); opacity: .9; } to { transform: scale(2.4); opacity: 0; } }
+.curve .grid-line { stroke: var(--border); stroke-width: 1; }
+.curve .threshold { stroke: var(--text-3); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.curve .threshold-label { fill: var(--text-3); font-size: 10.5px; font-weight: 600; }
+.curve .line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.curve .area { stroke: none; }
+.curve .hit { fill: transparent; stroke: none; cursor: crosshair; }
+.curve .hover-line { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+.curve .hover-dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2.5; pointer-events: none; }
+.footnote { margin-top: 12px; color: var(--text-3); font-size: 12px; }
+
+/* ============ Scenarios ============ */
+.link-btn { border: 0; background: none; color: var(--accent); font-weight: 700; font-size: 13px; padding: 4px; }
+.scenario-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.scenario {
+  display: grid; gap: 10px; padding: 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2);
+  transition: .2s var(--ease); animation: pop .4s var(--ease);
+}
+@keyframes pop { from { transform: scale(.94); opacity: 0; } }
+.scenario:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.scenario.best { border-color: color-mix(in srgb, var(--good) 50%, var(--border)); background: var(--surface); }
+.sc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sc-name { font-weight: 700; font-size: 13.5px; }
+.sc-badge { padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; color: var(--good); background: var(--good-soft); }
+.sc-odds { font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+.sc-odds.good { color: var(--good); } .sc-odds.bad { color: var(--bad); }
+.sc-meter { height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.sc-meter i { display: block; height: 100%; border-radius: 99px; }
+.sc-facts { display: flex; flex-wrap: wrap; gap: 5px; }
+.sc-facts span { padding: 3px 7px; border-radius: 7px; font-size: 11px; font-weight: 600; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); }
+.sc-actions { display: flex; gap: 6px; }
+.sc-actions button { flex: 1; padding: 7px; border-radius: 9px; font-size: 12px; font-weight: 700; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); }
+.sc-actions .sc-load { color: #fff; background: var(--accent); border-color: var(--accent); }
+.sc-actions button:hover { filter: brightness(1.05); color: var(--text); }
+.sc-actions .sc-load:hover { color: #fff; }
+.sc-empty { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 14px; border: 1.5px dashed var(--border); color: var(--text-3); font-size: 13px; }
+.sc-empty svg { flex: none; width: 24px; height: 24px; color: var(--accent); }
+
+/* ============ Insights ============ */
+.donut-wrap { position: relative; width: 170px; margin: 4px auto 0; }
+.donut { display: block; width: 100%; transform: rotate(-90deg); }
+.donut circle { fill: none; stroke-width: 14; }
+.donut-track { stroke: var(--track); }
+.donut-fill { stroke: var(--accent); stroke-linecap: round; }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.donut-center b { font-size: 30px; font-weight: 800; letter-spacing: -.03em; }
+.donut-center span { color: var(--text-3); font-size: 12px; font-weight: 600; }
+.donut-legend { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; }
+.donut-legend li { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); color: var(--text-2); font-weight: 600; font-size: 13px; }
+.donut-legend .sw { margin: 0; }
+.donut-legend b { margin-left: auto; color: var(--text); }
+
+.segment-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.segment { display: grid; grid-template-rows: auto 1fr; gap: 10px; min-width: 0; }
+.segment h3 { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.seg-bars { display: flex; align-items: flex-end; gap: 8px; height: 170px; padding-bottom: 2px; border-bottom: 1px solid var(--border); }
+.seg-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; min-width: 0; cursor: default; }
+.seg-col b { font-size: 12px; font-weight: 700; color: var(--text); }
+.seg-bar { width: 100%; max-width: 44px; border-radius: 8px 8px 4px 4px; background: var(--accent); transition: height 1s var(--ease), filter .2s; }
+.seg-col:nth-child(2) .seg-bar { background: var(--accent-2); }
+.seg-col:nth-child(3) .seg-bar { background: color-mix(in srgb, var(--accent-2) 55%, var(--surface)); }
+.seg-col:hover .seg-bar { filter: brightness(1.08); }
+.seg-labels { display: flex; gap: 8px; }
+.seg-labels span { flex: 1; min-width: 0; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--text-3); line-height: 1.25; }
+
+/* ============ Model ============ */
+.metric-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.metric-tiles div { padding: 12px; border-radius: 12px; background: var(--surface-2); }
+.metric-tiles span { display: block; color: var(--text-3); font-size: 12px; font-weight: 600; }
+.metric-tiles b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.confusion { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px; margin-top: 16px; font-size: 12px; }
+.cm-h { display: flex; align-items: center; justify-content: center; text-align: center; color: var(--text-3); font-weight: 600; padding: 4px; }
+.cm-cell { display: grid; place-items: center; padding: 14px; border-radius: 12px; font-size: 20px; font-weight: 800; background: var(--surface-2); }
+.cm-cell.ok { background: var(--accent-soft); color: var(--accent); }
+.table-wrap { overflow-x: auto; }
+.compare { width: 100%; border-collapse: collapse; font-size: 13px; }
+.compare th { text-align: left; color: var(--text-3); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px; background: var(--surface-2); }
+.compare th:first-child { border-radius: 10px 0 0 10px; } .compare th:last-child { border-radius: 0 10px 10px 0; }
+.compare td { padding: 12px 10px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-2); }
+.compare td:first-child { color: var(--text); font-weight: 700; white-space: nowrap; }
+.compare th:not(:first-child), .compare td:not(:first-child) { text-align: right; }
+.compare em { margin-left: 6px; padding: 2px 8px; border-radius: 99px; font-style: normal; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
+.pipeline { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; counter-reset: step; }
+.pipeline li { counter-increment: step; padding: 10px; border-radius: 12px; background: var(--surface-2); }
+.pipeline b { display: block; font-size: 12.5px; }
+.pipeline b::before { content: counter(step) ". "; color: var(--accent); }
+.pipeline span { color: var(--text-3); font-size: 11.5px; }
+
+.footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 8px; color: var(--text-3); font-size: 12.5px; }
+
+/* ============ Overlays ============ */
+.tooltip {
+  position: fixed; z-index: 100; pointer-events: none; max-width: 240px; padding: 9px 12px; border-radius: 10px;
+  background: var(--text); color: var(--surface); box-shadow: var(--shadow-lg); font-size: 12.5px;
+}
+.tooltip b { font-weight: 700; }
+.tooltip small { opacity: .7; }
+.toast-stack {
+  position: fixed; z-index: 120; right: max(20px, env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  display: grid; gap: 8px; width: min(360px, calc(100% - 32px));
+}
+.toast {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+  font-size: 13.5px; font-weight: 600; animation: toastIn .35s var(--ease);
+}
+.toast.out { animation: toastOut .3s var(--ease) forwards; }
+.toast-icon { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; }
+.toast-icon svg { width: 15px; height: 15px; stroke-width: 2.6; }
+.toast.good .toast-icon { color: var(--good); background: var(--good-soft); }
+.toast.info .toast-icon { color: var(--accent); background: var(--accent-soft); }
+@keyframes toastIn { from { transform: translateY(12px); opacity: 0; } }
+@keyframes toastOut { to { transform: translateY(8px); opacity: 0; } }
+.confetti { position: fixed; inset: 0; z-index: 110; width: 100%; height: 100%; pointer-events: none; }
+.sticky-bar {
+  position: fixed; z-index: 90; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 16px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); animation: toastIn .3s var(--ease);
+}
+.sb-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-3); }
+.sb-dot.good { background: var(--good); } .sb-dot.bad { background: var(--bad); }
+.sb-text { flex: 1; display: flex; align-items: baseline; gap: 8px; font-size: 13px; color: var(--text-2); }
+.sb-text b { font-size: 20px; font-weight: 800; color: var(--text); }
+.sb-btn { padding: 9px 14px; border-radius: 11px; font-size: 13px; font-weight: 700; color: #fff; background: var(--accent); }
+
+/* ============ Responsive ============ */
+@media (max-width: 1280px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .segment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .row-main, .row-explore, .row-3, .row-model { grid-template-columns: minmax(0, 1fr); }
+  .row-insights { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .sidebar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 60; height: auto; flex-direction: row; align-items: center; gap: 12px;
+    padding: 10px max(16px, env(safe-area-inset-left, 0px)); border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto;
+  }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 70; background: var(--surface); }
+  .brand span:last-child { display: none; }
+  .side-nav { display: flex; gap: 4px; }
+  .nav-label, .side-card { display: none; }
+  .side-nav a { padding: 8px 10px; white-space: nowrap; font-size: 13px; }
+  .side-nav a svg { display: none; }
+  .main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 90px; gap: 16px; }
+  .kpis, .row, .col { gap: 16px; }
+}
+@media (max-width: 560px) {
+  .kpis { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .kpi { padding: 14px; }
+  .kpi-head { font-size: 12px; }
+  .kpi-head small { display: none; }
+  .kpi-icon { width: 30px; height: 30px; }
+  .kpi-body b { font-size: 22px; }
+  .tb-title h1 { font-size: 20px; }
+  .chip { padding: 7px 10px; }
+  .tb-actions { gap: 8px; }
+  .choice-cards, .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .factor { grid-template-columns: 104px 1fr 42px; }
+  .metric-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .toast-stack { right: 16px; left: 16px; width: auto; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 901px) { .sticky-bar { display: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+</style>
+
+
+
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <a class="brand" href="#overview">
+      <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M5 13l4 4 10-11"/></svg></span>
+      <span>LoanSense</span>
+    </a>
+    <nav class="side-nav" aria-label="Sections">
+      <span class="nav-label">Menu</span>
+      <a href="#overview" class="active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>Overview</a>
+      <a href="#check">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Eligibility check</a>
+      <a href="#explore">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg>What-if explorer</a>
+      <a href="#scenarios">
+        <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>Scenarios</a>
+      <a href="#insights">
+        <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>Data insights</a>
+      <a href="#model">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Model</a>
+    </nav>
+    <div class="side-card">
+      <div class="sc-row"><span class="live-dot"></span>Model live</div>
+      <b>86.2%</b>
+      <span>test accuracy · Logistic Regression trained on 614 applications</span>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main" id="overview">
+    <header class="topbar">
+      <div class="tb-title">
+        <h1>Loan eligibility overview</h1>
+        <p>Adjust the application and every number on this page updates live.</p>
+      </div>
+      <div class="tb-actions">
+        <div class="presets" role="group" aria-label="Example applicants">
+          <button type="button" class="chip" data-preset="strong">Strong</button>
+          <button type="button" class="chip" data-preset="borderline">Borderline</button>
+          <button type="button" class="chip" data-preset="risky">High risk</button>
+        </div>
+        <button type="button" class="icon-btn" id="resetBtn" aria-label="Reset application" title="Reset">
+          <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button type="button" class="icon-btn" id="themeToggle" aria-label="Switch colour theme" title="Theme">
+          <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI row -->
+    <section class="kpis" aria-label="Key figures">
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon blue"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12l6-6"/></svg></span>Approval odds</div>
+        <div class="kpi-body">
+          <b id="kpiOdds">--</b>
+          <span class="trend" id="kpiOddsDelta">live</span>
+        </div>
+        <svg class="spark" id="kpiSpark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"></svg>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon violet"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h3"/></svg></span>Monthly EMI <small>at 9% p.a.</small></div>
+        <div class="kpi-body"><b id="emiValue">--</b></div>
+        <span class="kpi-foot" id="kpiTerm">over 30 years</span>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon amber"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>EMI to income</div>
+        <div class="kpi-body"><b id="ratioValue">--</b><span class="trend" id="ratioBadge">--</span></div>
+        <i class="meter"><em id="ratioBar"></em></i>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-head"><span class="kpi-icon teal"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l7-6 7 6v11"/><path d="M10 21v-6h4v6"/></svg></span>Loan to yearly income</div>
+        <div class="kpi-body"><b id="kpiLti">--</b></div>
+        <span class="kpi-foot" id="kpiLtiFoot">--</span>
+      </div>
+    </section>
+
+    <!-- Form + result -->
+    <section class="row row-main" id="check">
+      <form class="card form-card" id="loanForm" novalidate autocomplete="off">
+        <div class="card-head">
+          <div><h2>Application details</h2><p>Credit history, income and loan</p></div>
+        </div>
+
+        <div class="choice-cards" role="radiogroup" aria-label="Credit history">
+          <label class="choice-card">
+            <input type="radio" name="Credit_History" value="1" checked>
+            <span class="cc-body">
+              <span class="cc-icon good"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+              <span><b>Credit history meets guidelines</b><small>On-time repayments, no defaults</small></span>
+            </span>
+          </label>
+          <label class="choice-card">
+            <input type="radio" name="Credit_History" value="0">
+            <span class="cc-body">
+              <span class="cc-icon bad"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z"/><path d="M12 8v5M12 16h.01"/></svg></span>
+              <span><b>Doesn't meet guidelines</b><small>Missed payments or defaults</small></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="slider-field">
+          <div class="sf-top">
+            <label for="ApplicantIncome">Your monthly income</label>
+            <div class="money-input"><span>₹</span><input type="number" id="ApplicantIncome" name="ApplicantIncome" min="0" max="100000" step="100" value="5000" inputmode="numeric"></div>
+          </div>
+          <input type="range" class="range" data-for="ApplicantIncome" min="0" max="25000" step="100" value="5000" aria-label="Your monthly income slider">
+        </div>
+        <div class="slider-field">
+          <div class="sf-top">
+            <label for="CoapplicantIncome">Co-applicant monthly income</label>
+            <div class="money-input"><span>₹</span><input type="number" id="CoapplicantIncome" name="CoapplicantIncome" min="0" max="50000" step="100" value="1500" inputmode="numeric"></div>
+          </div>
+          <input type="range" class="range" data-for="CoapplicantIncome" min="0" max="15000" step="100" value="1500" aria-label="Co-applicant income slider">
+        </div>
+        <div class="slider-field">
+          <div class="sf-top">
+            <label for="LoanAmount">Loan amount <small>(thousands)</small></label>
+            <div class="money-input"><span>₹</span><input type="number" id="LoanAmount" name="LoanAmount" min="1" max="700" step="1" value="128" inputmode="numeric"><span>K</span></div>
+          </div>
+          <input type="range" class="range" data-for="LoanAmount" min="10" max="600" step="1" value="128" aria-label="Loan amount slider">
+          <p class="hint" id="loanHint"></p>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="termLabel">Repayment term</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="termLabel">
+            
+            <label><input type="radio" name="Loan_Amount_Term" value="60" ><span>5y</span></label>
+            
+            <label><input type="radio" name="Loan_Amount_Term" value="120" ><span>10y</span></label>
+            
+            <label><input type="radio" name="Loan_Amount_Term" value="180" ><span>15y</span></label>
+            
+            <label><input type="radio" name="Loan_Amount_Term" value="240" ><span>20y</span></label>
+            
+            <label><input type="radio" name="Loan_Amount_Term" value="300" ><span>25y</span></label>
+            
+            <label><input type="radio" name="Loan_Amount_Term" value="360" checked><span>30y</span></label>
+            
+            <label><input type="radio" name="Loan_Amount_Term" value="480" ><span>40y</span></label>
+            
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <span class="field-label" id="areaLabel">Property area</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="areaLabel">
+              <label><input type="radio" name="Property_Area" value="Urban"><span>Urban</span></label>
+              <label><input type="radio" name="Property_Area" value="Semiurban" checked><span>Semi-urban</span></label>
+              <label><input type="radio" name="Property_Area" value="Rural"><span>Rural</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="depLabel">Dependents</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="depLabel">
+              
+              <label><input type="radio" name="Dependents" value="0" checked><span>0</span></label>
+              
+              <label><input type="radio" name="Dependents" value="1" ><span>1</span></label>
+              
+              <label><input type="radio" name="Dependents" value="2" ><span>2</span></label>
+              
+              <label><input type="radio" name="Dependents" value="3+" ><span>3+</span></label>
+              
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="eduLabel">Education</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="eduLabel">
+              <label><input type="radio" name="Education" value="Graduate" checked><span>Graduate</span></label>
+              <label><input type="radio" name="Education" value="Not Graduate"><span>Not graduate</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="marLabel">Marital status</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="marLabel">
+              <label><input type="radio" name="Married" value="Yes" checked><span>Married</span></label>
+              <label><input type="radio" name="Married" value="No"><span>Single</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="empLabel">Employment</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="empLabel">
+              <label><input type="radio" name="Self_Employed" value="No" checked><span>Salaried</span></label>
+              <label><input type="radio" name="Self_Employed" value="Yes"><span>Self-employed</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="genLabel">Gender</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="genLabel">
+              <label><input type="radio" name="Gender" value="Male" checked><span>Male</span></label>
+              <label><input type="radio" name="Gender" value="Female"><span>Female</span></label>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div class="col">
+        <div class="card result-card" id="result" aria-live="polite">
+          <div class="card-head">
+            <div><h2>Prediction</h2><p>Approval threshold is 50%</p></div>
+            <span class="verdict-pill" id="verdictPill">Calculating…</span>
+          </div>
+          <div class="gauge-wrap">
+            <svg class="gauge" viewBox="0 0 240 148" role="img" aria-labelledby="gaugeText">
+              <path class="gauge-track" d="M20 120 A100 100 0 0 1 220 120" pathLength="100"/>
+              <path class="gauge-fill" id="gaugeFill" d="M20 120 A100 100 0 0 1 220 120" pathLength="100"/>
+              <line class="gauge-tick" x1="120" y1="8" x2="120" y2="30"/>
+              <text class="gauge-scale" x="20" y="146" text-anchor="middle">0%</text>
+              <text class="gauge-scale" x="120" y="46" text-anchor="middle">50%</text>
+              <text class="gauge-scale" x="220" y="146" text-anchor="middle">100%</text>
+            </svg>
+            <div class="gauge-center">
+              <span class="gauge-value" id="probValue">--</span>
+              <span class="gauge-label" id="gaugeText">approval odds</span>
+            </div>
+          </div>
+          <p class="verdict-text" id="verdictText">Adjust any detail and the prediction updates live.</p>
+          <button type="button" class="btn-outline" id="saveBtn">
+            <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>Save scenario to compare
+          </button>
+          <p class="error-msg" id="errorMsg" role="alert" hidden></p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div><h2>What's driving this</h2><p>Compared with the average applicant</p></div>
+            <span class="legend"><i class="sw up"></i>Helps <i class="sw down"></i>Hurts</span>
+          </div>
+          <ul class="factor-list" id="factorList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Explorer -->
+    <section class="row row-explore" id="explore">
+      <div class="card map-card">
+        <div class="card-head">
+          <div><h2>Approval map</h2><p>Monthly income × loan amount. Click a cell to try it.</p></div>
+          <div class="heat-legend" aria-hidden="true"><span>0%</span><i></i><span>100%</span></div>
+        </div>
+        <div class="map-wrap"><svg id="heatmap" class="heatmap" viewBox="0 0 560 380" role="img" aria-label="Approval odds for each combination of monthly income and loan amount"></svg></div>
+        <p class="footnote">The ring marks your application. The dark outline separates approved from rejected.</p>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="card-head"><div><h2>Ways to boost your odds</h2><p>Tap a suggestion to apply it</p></div></div>
+          <div id="boostList" class="boost-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2>Odds vs loan amount</h2><p>Click the chart to set a value</p></div><span class="chart-now" id="loanNow"></span></div>
+          <svg id="loanCurve" class="curve" viewBox="0 0 420 190" role="img" aria-label="Approval odds as the loan amount changes"></svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="row row-3">
+      <div class="card">
+        <div class="card-head"><div><h2>Odds vs monthly income</h2><p>Click the chart to set a value</p></div><span class="chart-now" id="incomeNow"></span></div>
+        <svg id="incomeCurve" class="curve" viewBox="0 0 420 190" role="img" aria-label="Approval odds as monthly income changes"></svg>
+      </div>
+      <div class="card scenarios-card" id="scenarios">
+        <div class="card-head">
+          <div><h2>Saved scenarios <small id="scenarioCount">0 of 4</small></h2><p>Compare versions of your application</p></div>
+          <button type="button" class="link-btn" id="clearScenarios" hidden>Clear all</button>
+        </div>
+        <div class="scenario-list" id="scenarioList"></div>
+      </div>
+    </section>
+
+    <!-- Insights -->
+    <section class="row row-insights" id="insights">
+      <div class="card donut-card">
+        <div class="card-head"><div><h2>Approval rate</h2><p>All 614 past applications</p></div></div>
+        
+        
+        <div class="donut-wrap">
+          <svg class="donut" viewBox="0 0 120 120" role="img" aria-label="69% approved">
+            <circle class="donut-track" cx="60" cy="60" r="48" pathLength="100"/>
+            <circle class="donut-fill" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="67.2 100"/>
+          </svg>
+          <div class="donut-center"><b>69%</b><span>approved</span></div>
+        </div>
+        <ul class="donut-legend">
+          <li><i class="sw accent"></i>Approved <b>422</b></li>
+          <li><i class="sw muted"></i>Rejected <b>192</b></li>
+        </ul>
+      </div>
+      <div class="card segments-card">
+        <div class="card-head"><div><h2>Approval rate by group</h2><p>Hover a bar for counts</p></div></div>
+        <div class="segment-grid" id="segmentGrid"></div>
+      </div>
+    </section>
+
+    <!-- Model -->
+    
+    
+    <section class="row row-model" id="model">
+      <div class="card">
+        <div class="card-head"><div><h2>Model performance</h2><p>Held-out test set of 123 applications</p></div></div>
+        <div class="metric-tiles">
+          <div><span>Accuracy</span><b>86.2%</b></div>
+          <div><span>ROC-AUC</span><b>0.88</b></div>
+          <div><span>Precision</span><b>0.84</b></div>
+          <div><span>Recall</span><b>0.99</b></div>
+        </div>
+        <div class="confusion" aria-label="Confusion matrix">
+          <span></span><span class="cm-h">Predicted reject</span><span class="cm-h">Predicted approve</span>
+          <span class="cm-h">Actually rejected</span><span class="cm-cell ok">22</span><span class="cm-cell">16</span>
+          <span class="cm-h">Actually approved</span><span class="cm-cell">1</span><span class="cm-cell ok">84</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h2>Model comparison</h2><p>5-fold cross-validation on the training set</p></div></div>
+        <div class="table-wrap">
+          <table class="compare">
+            <thead><tr><th>Model</th><th>Accuracy</th><th>F1</th><th>ROC-AUC</th></tr></thead>
+            <tbody>
+            
+              <tr class="chosen">
+                <td>Logistic Regression <em>Deployed</em></td>
+                <td>0.790</td><td>0.864</td><td>0.719</td>
+              </tr>
+            
+              <tr class="">
+                <td>Decision Tree</td>
+                <td>0.780</td><td>0.858</td><td>0.672</td>
+              </tr>
+            
+              <tr class="">
+                <td>Random Forest</td>
+                <td>0.790</td><td>0.863</td><td>0.783</td>
+              </tr>
+            
+            </tbody>
+          </table>
+        </div>
+        <ol class="pipeline">
+          <li><b>Clean</b><span>Fill missing values</span></li>
+          <li><b>Engineer</b><span>EMI, income ratios</span></li>
+          <li><b>Transform</b><span>Scale and encode</span></li>
+          <li><b>Predict</b><span>Logistic Regression</span></li>
+          <li><b>Explain</b><span>Factor contributions</span></li>
+        </ol>
+      </div>
+    </section>
+    
+
+    <footer class="footer">
+      <span>Built with Python, scikit-learn, Pandas, NumPy and Flask.</span>
+      <span>Predictions are for education only, not financial advice.</span>
+    </footer>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+<div class="sticky-bar" id="stickyBar" hidden>
+  <span class="sb-dot" id="sbDot"></span>
+  <span class="sb-text"><b id="sbValue">--</b><span id="sbVerdict">approval odds</span></span>
+  <a href="#result" class="sb-btn">See details</a>
+</div>
+
+<script id="insightsData" type="application/json">{"dataset": {"approval_rate": 0.6873, "median_income": 3812.5, "median_loan": 128.0, "rows": 614}, "metrics": {"best_params": {"model__C": 0.1, "model__class_weight": null}, "cv_baselines": {"decision_tree": {"accuracy": 0.7799, "f1": 0.8579, "roc_auc": 0.6716}, "logistic_regression": {"accuracy": 0.7901, "f1": 0.8639, "roc_auc": 0.7192}, "random_forest": {"accuracy": 0.7901, "f1": 0.8627, "roc_auc": 0.7832}}, "dataset_rows": 614, "test_set": {"accuracy": 0.8618, "confusion_matrix": [[22, 16], [1, 84]], "f1": 0.9081, "precision": 0.84, "recall": 0.9882, "roc_auc": 0.8808}, "top_features": [{"coefficient": 1.6911, "feature": "cat__Credit_History_1"}, {"coefficient": 0.3318, "feature": "cat__Property_Area_Semiurban"}, {"coefficient": 0.2784, "feature": "cat__Married_Yes"}, {"coefficient": -0.2326, "feature": "cat__Property_Area_Rural"}, {"coefficient": -0.231, "feature": "cat__Education_Not Graduate"}, {"coefficient": 0.1705, "feature": "cat__Dependents_2"}, {"coefficient": -0.1615, "feature": "cat__Dependents_1"}, {"coefficient": -0.1257, "feature": "num__CoapplicantIncome"}]}, "segments": [{"rows": [{"count": 475, "label": "Meets guidelines", "rate": 0.7958}, {"count": 89, "label": "Does not meet", "rate": 0.0787}], "title": "Credit history"}, {"rows": [{"count": 233, "label": "Semiurban", "rate": 0.7682}, {"count": 202, "label": "Urban", "rate": 0.6584}, {"count": 179, "label": "Rural", "rate": 0.6145}], "title": "Property area"}, {"rows": [{"count": 398, "label": "Married", "rate": 0.7161}, {"count": 213, "label": "Single", "rate": 0.6291}], "title": "Marital status"}, {"rows": [{"count": 480, "label": "Graduate", "rate": 0.7083}, {"count": 134, "label": "Not Graduate", "rate": 0.6119}], "title": "Education"}]}</script>
+
+
+<script>
+// In-browser port of the trained scikit-learn pipeline (same parameters as models/loan_model.joblib)
+function makeLoanModel(M) {
+  const RAW = ['Gender', 'Married', 'Dependents', 'Education', 'Self_Employed', 'ApplicantIncome', 'CoapplicantIncome', 'LoanAmount', 'Loan_Amount_Term', 'Credit_History', 'Property_Area'];
+  const DEFAULTS = { Gender: 'Male', Married: 'Yes', Dependents: '0', Education: 'Graduate', Self_Employed: 'No', CoapplicantIncome: 0, Loan_Amount_Term: 360, Property_Area: 'Semiurban' };
+  const NUMS = ['ApplicantIncome', 'CoapplicantIncome', 'LoanAmount', 'Loan_Amount_Term'];
+
+  function toRow(app) {
+    const missing = ['ApplicantIncome', 'LoanAmount', 'Credit_History'].filter((f) => app[f] === undefined || app[f] === null || app[f] === '');
+    if (missing.length) throw new Error('Missing required fields: ' + missing.join(', '));
+    const row = {};
+    RAW.forEach((f) => { const v = app[f]; row[f] = (v === undefined || v === null || v === '') ? DEFAULTS[f] : v; });
+    NUMS.forEach((f) => {
+      const n = Number(row[f]);
+      if (!isFinite(n)) throw new Error(f + ' must be a number');
+      if (n < 0) throw new Error(f + ' cannot be negative');
+      row[f] = n;
+    });
+    if (row.LoanAmount === 0) throw new Error('LoanAmount must be greater than zero');
+    return row;
+  }
+
+  function transform(row) {
+    const ch = Number(row.Credit_History);
+    const cats = { ...row, Credit_History: ch === 1 ? '1' : ch === 0 ? '0' : null };
+    const loan = row.LoanAmount;
+    const term = row.Loan_Amount_Term || 360;
+    const total = row.ApplicantIncome + row.CoapplicantIncome;
+    const eng = {
+      ...row,
+      TotalIncome_log: Math.log1p(total),
+      LoanAmount_log: Math.log1p(loan),
+      EMI: loan * 1000 / term,
+      Balance_Income: total - loan * 1000 / term,
+      Loan_Income_Ratio: total === 0 ? NaN : loan * 1000 / total,
+    };
+    const x = M.numeric.map((f, i) => {
+      let v = eng[f];
+      if (!isFinite(v)) v = M.num_impute[i];
+      return (v - M.mean[i]) / M.scale[i];
+    });
+    M.categorical.forEach((f, i) => {
+      let v = cats[f] == null ? M.cat_impute[i] : String(cats[f]);
+      M.categories[i].forEach((c, j) => { if (j !== M.drop_idx[i]) x.push(v === c ? 1 : 0); });
+    });
+    return x;
+  }
+
+  const prob = (row) => {
+    const x = transform(row);
+    const z = x.reduce((s, v, i) => s + v * M.coef[i], M.intercept);
+    return 1 / (1 + Math.exp(-z));
+  };
+  const r4 = (n) => Math.round(n * 1e4) / 1e4;
+
+  function explain(row) {
+    const x = transform(row), totals = {};
+    x.forEach((v, i) => { const f = M.factor_of[i]; totals[f] = (totals[f] || 0) + (v - M.baseline[i]) * M.coef[i]; });
+    return Object.entries(totals).map(([factor, v]) => ({ factor, impact: r4(v) }))
+      .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
+  }
+
+  function suggestions(row, p) {
+    const sc = [];
+    if (Number(row.Credit_History) === 0) sc.push(['Build a credit history that meets guidelines', { Credit_History: 1 }]);
+    sc.push(['Borrow 25% less', { LoanAmount: Math.round(row.LoanAmount * 0.75) }]);
+    if (row.Loan_Amount_Term < 360) sc.push(['Stretch the term to 360 months', { Loan_Amount_Term: 360 }]);
+    sc.push(['Add a co-applicant earning 2,000 more', { CoapplicantIncome: row.CoapplicantIncome + 2000 }]);
+    return sc.map(([label, change]) => {
+      const np = prob({ ...row, ...change });
+      return { label, change, new_probability: r4(np), delta: r4(np - p) };
+    }).filter((s) => s.delta > 0.005).sort((a, b) => b.delta - a.delta).slice(0, 3);
+  }
+
+  function predict(app) {
+    const row = toRow(app);
+    const p = prob(row);
+    const term = row.Loan_Amount_Term || 360, income = row.ApplicantIncome + row.CoapplicantIncome;
+    const r = M.annual_rate / 12;
+    const emi = row.LoanAmount * 1000 * r * Math.pow(1 + r, term) / (Math.pow(1 + r, term) - 1);
+    return {
+      eligible: p >= 0.5, decision: p >= 0.5 ? 'Approved' : 'Rejected', approval_probability: r4(p),
+      factors: explain(row), suggestions: suggestions(row, p),
+      affordability: { emi: Math.round(emi * 100) / 100, total_income: income, emi_to_income: income ? r4(emi / income) : null, annual_rate: M.annual_rate },
+    };
+  }
+  function landscape(app) {
+    const row = toRow(app);
+    const range = (a, b, s) => Array.from({ length: Math.floor((b - a) / s) + 1 }, (_, i) => a + i * s);
+    const incomeAxis = range(0, 25000, 1000), loanAxis = range(25, 600, 25);
+    const incomeCurve = range(0, 25000, 500), loanCurve = range(10, 600, 10);
+    return {
+      income_axis: incomeAxis, loan_axis: loanAxis,
+      grid: loanAxis.map((l) => incomeAxis.map((i) => r4(prob({ ...row, ApplicantIncome: i, LoanAmount: l })))),
+      income_curve: { x: incomeCurve, p: incomeCurve.map((i) => r4(prob({ ...row, ApplicantIncome: i }))) },
+      loan_curve: { x: loanCurve, p: loanCurve.map((l) => r4(prob({ ...row, LoanAmount: l }))) },
+    };
+  }
+  return { predict, landscape };
+}
+
+
+
+// Preview: the trained model runs in the browser instead of behind Flask
+const LOAN_MODEL = makeLoanModel({"numeric": ["ApplicantIncome", "CoapplicantIncome", "LoanAmount", "Loan_Amount_Term", "TotalIncome_log", "LoanAmount_log", "EMI", "Balance_Income", "Loan_Income_Ratio"], "num_impute": [3812.5, 1188.5, 128.0, 360.0, 8.59738972915147, 4.859812404361672, 361.1111111111111, 4979.888888888889, 24.12920896847402], "mean": [5403.459283387622, 1621.2457980271008, 145.75244299674267, 342.4104234527687, 8.66960846588424, 4.866091231157082, 473.6870831394447, 6551.017998275279, 23.87678674779447], "scale": [6104.0648565338915, 2923.8644597700595, 84.03871423798937, 64.37614137743927, 0.5445726961631252, 0.4904106892466162, 510.71795289731915, 6285.012346651803, 8.700067343758928], "categorical": ["Gender", "Married", "Dependents", "Education", "Self_Employed", "Property_Area", "Credit_History"], "cat_impute": ["Male", "Yes", "0", "Graduate", "No", "Semiurban", "1"], "categories": [["Female", "Male"], ["No", "Yes"], ["0", "1", "2", "3+"], ["Graduate", "Not Graduate"], ["No", "Yes"], ["Rural", "Semiurban", "Urban"], ["0", "1"]], "drop_idx": [0, 0, null, 0, 0, null, 0], "coef": [-0.03139403819705015, -0.16728070775320933, 0.005149608849229895, -0.061477749722036415, -0.02071832019810894, 0.07962907281798141, -0.041062696578557434, -0.10497448035762715, -0.2666350608392572, -0.01740258637907392, 0.33294574935391547, 0.016392938600196128, -0.1954222373731534, 0.18283764976854722, -0.0036991250157629397, -0.24695910426217219, -0.031016821832958494, -0.2532702222054283, 0.3521153685290742, -0.09873592034381898, 1.9642648573288903], "intercept": -0.9972487249901938, "baseline": [-2.694189424578963e-17, -3.977997808103167e-18, -7.910791095659707e-18, 1.7955235561120203e-16, 1.31093109585218e-15, 3.8417061786550867e-16, -3.440064013598307e-17, -4.9815381642382836e-17, -5.0990699176595136e-17, 0.8175895765472313, 0.6530944625407166, 0.5863192182410424, 0.16612377850162866, 0.16449511400651465, 0.08306188925081433, 0.2182410423452769, 0.13355048859934854, 0.2915309446254072, 0.3794788273615635, 0.3289902280130293, 0.8550488599348535], "factor_of": ["Household income", "Household income", "Loan size", "Loan term", "Household income", "Loan size", "Loan size", "Household income", "Loan size", "Gender", "Marital status", "Dependents", "Dependents", "Dependents", "Dependents", "Education", "Employment type", "Property area", "Property area", "Property area", "Credit history"], "annual_rate": 0.09});
+window.LoanAPI = {
+  predict: async (d) => LOAN_MODEL.predict(d),
+  landscape: async (d) => LOAN_MODEL.landscape(d),
+};
+
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const SVG = 'http://www.w3.org/2000/svg';
+  const form = $('#loanForm');
+  const panel = $('#result');
+  const tooltip = $('#tooltip');
+  const insights = JSON.parse($('#insightsData').textContent);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const inr = (n) => '₹' + Math.round(n).toLocaleString('en-IN');
+  const pct = (p) => Math.round(p * 100) + '%';
+
+  // ---------- API (the static preview swaps this for an in-browser model) ----------
+  async function post(url, body, signal) {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || 'Something went wrong');
+    return out;
+  }
+  const API = window.LoanAPI || {
+    predict: (d, signal) => post('/api/predict', d, signal),
+    landscape: (d, signal) => post('/api/landscape', d, signal),
+  };
+
+  const PRESETS = {
+    strong:     { Credit_History: '1', ApplicantIncome: 9000, CoapplicantIncome: 3000, LoanAmount: 140, Loan_Amount_Term: '360', Property_Area: 'Semiurban', Dependents: '0', Education: 'Graduate', Married: 'Yes', Self_Employed: 'No', Gender: 'Male' },
+    borderline: { Credit_History: '1', ApplicantIncome: 3000, CoapplicantIncome: 800, LoanAmount: 160, Loan_Amount_Term: '360', Property_Area: 'Rural', Dependents: '1', Education: 'Not Graduate', Married: 'No', Self_Employed: 'Yes', Gender: 'Female' },
+    risky:      { Credit_History: '0', ApplicantIncome: 3500, CoapplicantIncome: 0, LoanAmount: 200, Loan_Amount_Term: '240', Property_Area: 'Urban', Dependents: '3+', Education: 'Graduate', Married: 'No', Self_Employed: 'No', Gender: 'Male' },
+  };
+  const DEFAULTS = { Credit_History: '1', ApplicantIncome: 5000, CoapplicantIncome: 1500, LoanAmount: 128, Loan_Amount_Term: '360', Property_Area: 'Semiurban', Dependents: '0', Education: 'Graduate', Married: 'Yes', Self_Employed: 'No', Gender: 'Male' };
+
+  const FACTOR_TIPS = {
+    'Credit history': 'The single strongest signal. Lenders rarely approve applicants whose credit history misses guidelines.',
+    'Household income': 'Combined applicant and co-applicant income, and what is left after the EMI.',
+    'Loan size': 'Bigger loans relative to income mean a heavier monthly instalment.',
+    'Loan term': 'Longer terms spread repayments out and lower the EMI.',
+    'Property area': 'Semi-urban properties had the highest approval rate in past data.',
+    'Marital status': 'Married applicants were approved slightly more often.',
+    'Education': 'Graduates were approved slightly more often.',
+    'Dependents': 'The number of people financially dependent on the applicant.',
+    'Employment type': 'Salaried versus self-employed income.',
+    'Gender': 'Included because it is in the original dataset; its effect is small.',
+  };
+
+  const ICONS = {
+    check: '<svg viewBox="0 0 24 24"><path d="M5 13l4 4 10-11"/></svg>',
+    cross: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    bookmark: '<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>',
+    spark: '<svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>',
+  };
+
+  // ---------- Theme ----------
+  $('#themeToggle').addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  });
+
+  // ---------- Sidebar: highlight the section in view ----------
+  const navLinks = $$('.side-nav a');
+  const spy = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (!e.isIntersecting || scrollY < 120) return;
+    navLinks.forEach((a) => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+  }), { rootMargin: '-35% 0px -60% 0px' });
+  ['check', 'explore', 'scenarios', 'insights', 'model'].forEach((id) => { const n = document.getElementById(id); if (n) spy.observe(n); });
+  addEventListener('scroll', () => { if (scrollY < 120) navLinks.forEach((a, i) => a.classList.toggle('active', i === 0)); }, { passive: true });
+
+  // ---------- Form wiring ----------
+  const paintRange = (r) => {
+    const v = Math.min(Math.max(+r.value, +r.min), +r.max);
+    r.style.setProperty('--pct', ((v - r.min) / (r.max - r.min)) * 100 + '%');
+  };
+  $$('.range').forEach((r) => {
+    const input = $('#' + r.dataset.for);
+    paintRange(r);
+    r.addEventListener('input', () => { input.value = r.value; paintRange(r); schedule(); });
+    input.addEventListener('input', () => { r.value = input.value || 0; paintRange(r); schedule(); });
+  });
+  $$('input[type=radio]', form).forEach((el) => el.addEventListener('change', () => schedule()));
+
+  function setValues(values) {
+    Object.entries(values).forEach(([name, value]) => {
+      const radio = form.querySelector(`input[type=radio][name="${name}"][value="${value}"]`);
+      if (radio) { radio.checked = true; return; }
+      const input = $('#' + name);
+      if (input) {
+        input.value = value;
+        const r = $(`.range[data-for="${name}"]`);
+        if (r) { r.value = value; paintRange(r); }
+      }
+    });
+    schedule(0);
+  }
+  $$('[data-preset]').forEach((b) => b.addEventListener('click', () => setValues(PRESETS[b.dataset.preset])));
+  $('#resetBtn').addEventListener('click', () => setValues(DEFAULTS));
+  const readForm = () => Object.fromEntries(new FormData(form).entries());
+
+  // ---------- Prediction loop ----------
+  let timer, mapTimer, ctrl, mapCtrl, lastResult = null, prevEligible = null;
+  function schedule(delay = 140) {
+    clearTimeout(timer);
+    timer = setTimeout(run, delay);
+    clearTimeout(mapTimer);
+    mapTimer = setTimeout(runLandscape, delay + 200);
+  }
+
+  async function run() {
+    const data = readForm();
+    updateHint(data);
+    ctrl?.abort();
+    ctrl = new AbortController();
+    panel.classList.add('loading');
+    try {
+      const out = await API.predict(data, ctrl.signal);
+      $('#errorMsg').hidden = true;
+      render(out, data);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      const msg = $('#errorMsg');
+      msg.textContent = err.message.replace(/_/g, ' ');
+      msg.hidden = false;
+    } finally {
+      panel.classList.remove('loading');
+    }
+  }
+
+  async function runLandscape() {
+    const data = readForm();
+    mapCtrl?.abort();
+    mapCtrl = new AbortController();
+    try {
+      const land = await API.landscape(data, mapCtrl.signal);
+      drawHeatmap(land, data);
+      drawCurve($('#loanCurve'), land.loan_curve, +data.LoanAmount, 'LoanAmount', (v) => inr(v * 1000), 'Loan amount');
+      drawCurve($('#incomeCurve'), land.income_curve, +data.ApplicantIncome, 'ApplicantIncome', inr, 'Monthly income');
+    } catch (err) { /* the main panel already shows input errors */ }
+  }
+
+  function updateHint(d) {
+    const income = (+d.ApplicantIncome || 0) + (+d.CoapplicantIncome || 0);
+    const loan = (+d.LoanAmount || 0) * 1000;
+    $('#loanHint').innerHTML = `That's <b>${inr(loan)}</b>, about <b>${income ? (loan / (income * 12)).toFixed(1) : '--'}×</b> your yearly household income. The typical loan here is ${inr(insights.dataset.median_loan * 1000)}.`;
+  }
+
+  function tween(el, to, fmt, dur = 650) {
+    const from = +(el.dataset.v || 0), start = performance.now();
+    el.dataset.v = to;
+    if (reduceMotion) { el.textContent = fmt(to); return; }
+    const step = (t) => {
+      const k = Math.min(1, (t - start) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = fmt(from + (to - from) * e);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  function render(out, data) {
+    lastResult = { out, data };
+    const p = out.approval_probability * 100;
+    tween($('#probValue'), p, (v) => Math.round(v) + '%', 700);
+    $('#gaugeFill').style.strokeDashoffset = 100 * (1 - out.approval_probability);
+    panel.classList.toggle('is-good', out.eligible);
+    panel.classList.toggle('is-bad', !out.eligible);
+
+    const strength = p >= 80 ? 'Strong' : p >= 50 ? 'Moderate' : p >= 30 ? 'Weak' : 'Very weak';
+    $('#verdictPill').innerHTML = out.eligible ? ICONS.check + 'Likely approved' : ICONS.cross + 'Likely rejected';
+    renderKpis(out, data);
+    $('#verdictText').textContent = out.eligible
+      ? `${strength} application. The model expects approval with ${Math.round(p)}% confidence.`
+      : `${strength} application. Approval needs at least 50%; see below for what would help most.`;
+
+    const a = out.affordability;
+    tween($('#emiValue'), a.emi, inr);
+    const ratio = a.emi_to_income;
+    $('#ratioValue').textContent = ratio == null ? '--' : Math.round(ratio * 100) + '%';
+    const bar = $('#ratioBar');
+    bar.style.width = Math.min(100, (ratio || 0) * 100) + '%';
+    const level = ratio == null ? null : ratio > 0.5 ? ['bad', 'High', '--bad'] : ratio > 0.35 ? ['warn', 'Stretched', '--warn'] : ['good', 'Healthy', '--good'];
+    bar.style.background = level ? `var(${level[2]})` : 'var(--track)';
+    $('#ratioBadge').className = 'trend ' + (level ? level[0] : '');
+    $('#ratioBadge').textContent = level ? level[1] : '--';
+
+    renderFactors(out.factors);
+    renderBoosts(out.suggestions, out.eligible);
+    updateStickyBar(out);
+    $('#saveBtn').classList.remove('saved');
+    $('#saveBtn').innerHTML = ICONS.bookmark + 'Save scenario to compare';
+
+    if (prevEligible === false && out.eligible) {
+      celebrate();
+      toast(`You crossed into approval territory at ${Math.round(p)}%.`, 'good', ICONS.check);
+    }
+    prevEligible = out.eligible;
+  }
+
+  // ---------- KPI tiles ----------
+  const history = [];
+  function renderKpis(out, data) {
+    const p = out.approval_probability;
+    tween($('#kpiOdds'), p * 100, (v) => Math.round(v) + '%', 700);
+    const prev = history.length ? history[history.length - 1] : null;
+    const delta = prev == null ? 0 : Math.round((p - prev) * 100);
+    const badge = $('#kpiOddsDelta');
+    badge.className = 'trend ' + (delta > 0 ? 'up' : delta < 0 ? 'down' : '');
+    badge.textContent = prev == null || delta === 0 ? (p >= 0.5 ? 'Above 50%' : 'Below 50%') : (delta > 0 ? '▲ +' : '▼ ') + delta + ' pts';
+    history.push(p);
+    if (history.length > 16) history.shift();
+    drawSpark();
+
+    $('#kpiTerm').textContent = `over ${data.Loan_Amount_Term / 12} years · ${inr(data.LoanAmount * 1000)} loan`;
+    const yearly = ((+data.ApplicantIncome || 0) + (+data.CoapplicantIncome || 0)) * 12;
+    const lti = yearly ? (data.LoanAmount * 1000) / yearly : null;
+    $('#kpiLti').textContent = lti == null ? '--' : lti.toFixed(1) + '×';
+    $('#kpiLtiFoot').textContent = `${inr(yearly)} household income a year`;
+  }
+  function drawSpark() {
+    const svg = $('#kpiSpark');
+    const W = 120, H = 32, n = history.length;
+    svg.replaceChildren();
+    el('line', { class: 'sp-mid', x1: 0, x2: W, y1: H / 2, y2: H / 2 }, svg);
+    if (n < 2) return;
+    const pts = history.map((v, i) => [(i / (n - 1)) * W, H - v * H]);
+    const d = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join('');
+    el('path', { class: 'sp-area', d: `${d}L${W} ${H}L0 ${H}Z` }, svg);
+    el('path', { class: 'sp-line', d }, svg);
+  }
+
+  function renderFactors(factors) {
+    const top = factors.slice(0, 6);
+    const max = Math.max(1, ...top.map((f) => Math.abs(f.impact)));
+    const list = $('#factorList');
+    const existing = new Map($$('.factor', list).map((li) => [li.dataset.factor, li]));
+    list.replaceChildren(...top.map((f) => {
+      let li = existing.get(f.factor);
+      if (!li) {
+        li = document.createElement('li');
+        li.className = 'factor';
+        li.dataset.factor = f.factor;
+        li.innerHTML = `<span class="factor-name">${f.factor}</span><span class="factor-track"><span class="factor-bar"></span></span><span class="factor-val"></span>`;
+        bindTip(li, () => {
+          const v = +li.dataset.impact;
+          return `<b>${f.factor}</b> ${v >= 0 ? 'helps' : 'hurts'} this application (${v >= 0 ? '+' : ''}${v.toFixed(2)} log-odds).<br>${FACTOR_TIPS[f.factor] || ''}`;
+        });
+      }
+      li.dataset.impact = f.impact;
+      const w = (Math.abs(f.impact) / max) * 50;
+      const bar = $('.factor-bar', li);
+      bar.className = 'factor-bar ' + (f.impact >= 0 ? 'up' : 'down');
+      bar.style.width = w + '%';
+      bar.style.left = f.impact >= 0 ? '50%' : (50 - w) + '%';
+      $('.factor-val', li).textContent = (f.impact >= 0 ? '+' : '−') + Math.abs(f.impact).toFixed(2);
+      li.setAttribute('aria-label', `${f.factor} ${f.impact >= 0 ? 'helps' : 'hurts'} by ${Math.abs(f.impact).toFixed(2)}`);
+      return li;
+    }));
+  }
+
+  function renderBoosts(suggestions, eligible) {
+    const box = $('#boostList');
+    if (!suggestions.length) {
+      box.innerHTML = `<div class="boost-empty">${eligible ? 'This profile is already about as strong as it gets.' : 'No simple change moves the needle much here.'}</div>`;
+      return;
+    }
+    box.replaceChildren(...suggestions.map((s) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'boost';
+      b.innerHTML = `<span class="boost-icon"><svg viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 7-7"/><path d="M15 8h6v6"/></svg></span>
+        <span class="boost-text">${s.label}<small>Tap to apply · odds become ${pct(s.new_probability)}</small></span>
+        <span class="boost-delta">+${Math.round(s.delta * 100)} pts</span>`;
+      b.addEventListener('click', () => {
+        setValues(Object.fromEntries(Object.entries(s.change).map(([k, v]) => [k, String(v)])));
+        toast(`Applied: ${s.label.toLowerCase()}.`, 'info', ICONS.spark);
+      });
+      return b;
+    }));
+  }
+
+  // ---------- Tooltip ----------
+  function placeTip(e) {
+    const x = Math.min(e.clientX + 14, window.innerWidth - tooltip.offsetWidth - 10);
+    const y = e.clientY + 16 + tooltip.offsetHeight > window.innerHeight ? e.clientY - tooltip.offsetHeight - 12 : e.clientY + 16;
+    tooltip.style.left = Math.max(10, x) + 'px';
+    tooltip.style.top = y + 'px';
+  }
+  const showTip = (html, e) => { tooltip.innerHTML = html; tooltip.hidden = false; placeTip(e); };
+  const hideTip = () => { tooltip.hidden = true; };
+  function bindTip(el, html) {
+    el.addEventListener('mouseenter', (e) => showTip(html(), e));
+    el.addEventListener('mousemove', placeTip);
+    el.addEventListener('mouseleave', hideTip);
+  }
+
+  // ---------- SVG helpers ----------
+  const el = (tag, attrs = {}, parent) => {
+    const n = document.createElementNS(SVG, tag);
+    Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+  const heatFill = (p) => p >= 0.5
+    ? `color-mix(in oklab, var(--good) ${Math.round((p - 0.5) * 200)}%, var(--heat-mid))`
+    : `color-mix(in oklab, var(--bad) ${Math.round((0.5 - p) * 200)}%, var(--heat-mid))`;
+  const short = (n) => n >= 1000 ? (n / 1000) + 'k' : String(n);
+
+  // ---------- Approval map ----------
+  function drawHeatmap(land, data) {
+    const svg = $('#heatmap');
+    const W = 560, H = 380, L = 58, R = 8, T = 8, B = 44;
+    const cols = land.income_axis.length, rows = land.loan_axis.length;
+    const cw = (W - L - R) / cols, ch = (H - T - B) / rows;
+    const yOf = (r) => T + (rows - 1 - r) * ch;
+    svg.replaceChildren();
+
+    const cells = el('g', {}, svg);
+    land.grid.forEach((row, r) => row.forEach((p, c) => {
+      const rect = el('rect', { class: 'cell', x: L + c * cw, y: yOf(r), width: cw, height: ch, rx: 2.5 }, cells);
+      rect.style.fill = heatFill(p);
+      const income = land.income_axis[c], loan = land.loan_axis[r];
+      rect.addEventListener('mouseenter', (e) => showTip(`<b>${pct(p)} odds</b><br>Income ${inr(income)} · Loan ${inr(loan * 1000)}<br><small>Click to try this</small>`, e));
+      rect.addEventListener('mousemove', placeTip);
+      rect.addEventListener('mouseleave', hideTip);
+      rect.addEventListener('click', () => {
+        setValues({ ApplicantIncome: income, LoanAmount: loan });
+        toast(`Trying income ${inr(income)} with a ${inr(loan * 1000)} loan.`, 'info', ICONS.spark);
+      });
+    }));
+
+    // Outline where the decision flips between approved and rejected
+    let d = '';
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const ok = land.grid[r][c] >= 0.5;
+      if (c + 1 < cols && (land.grid[r][c + 1] >= 0.5) !== ok) { const x = L + (c + 1) * cw; d += `M${x} ${yOf(r)}V${yOf(r) + ch}`; }
+      if (r + 1 < rows && (land.grid[r + 1][c] >= 0.5) !== ok) { const y = yOf(r); d += `M${L + c * cw} ${y}H${L + (c + 1) * cw}`; }
+    }
+    if (d) el('path', { class: 'boundary', d }, svg);
+
+    const axis = el('g', { class: 'axis' }, svg);
+    land.income_axis.forEach((v, c) => {
+      if (v % 5000) return;
+      el('text', { x: L + c * cw + cw / 2, y: H - B + 16, 'text-anchor': 'middle' }, axis).textContent = short(v);
+    });
+    land.loan_axis.forEach((v, r) => {
+      if (v % 100) return;
+      el('text', { x: L - 8, y: yOf(r) + ch / 2 + 4, 'text-anchor': 'end' }, axis).textContent = '₹' + v + 'K';
+    });
+    el('text', { class: 'title', x: L + (W - L - R) / 2, y: H - 6, 'text-anchor': 'middle' }, axis).textContent = 'Your monthly income (₹)';
+    el('text', { class: 'title', x: 12, y: T + (H - T - B) / 2, 'text-anchor': 'middle', transform: `rotate(-90 12 ${T + (H - T - B) / 2})` }, axis).textContent = 'Loan amount';
+
+    // Marker for the current application
+    const inc0 = land.income_axis[0], incStep = land.income_axis[1] - inc0;
+    const loan0 = land.loan_axis[0], loanStep = land.loan_axis[1] - loan0;
+    const cx = L + Math.min(cols - 0.5, Math.max(0.5, (+data.ApplicantIncome - inc0) / incStep + 0.5)) * cw;
+    const cy = T + (H - T - B) - Math.min(rows - 0.5, Math.max(0.5, (+data.LoanAmount - loan0) / loanStep + 0.5)) * ch;
+    const m = el('g', {}, svg);
+    if (!reduceMotion) el('circle', { class: 'marker-pulse', cx, cy, r: 9 }, m);
+    el('circle', { class: 'marker-ring', cx, cy, r: 10 }, m);
+    el('circle', { class: 'marker-core', cx, cy, r: 5.5 }, m);
+  }
+
+  // ---------- What-if curves ----------
+  function drawCurve(svg, curve, current, field, fmt, label) {
+    const W = 420, H = 190, L = 40, R = 14, T = 12, B = 30;
+    const xs = curve.x, ps = curve.p, x0 = xs[0], x1 = xs[xs.length - 1];
+    const X = (v) => L + ((v - x0) / (x1 - x0)) * (W - L - R);
+    const Y = (p) => T + (1 - p) * (H - T - B);
+    const id = svg.id;
+    svg.replaceChildren();
+
+    const defs = el('defs', {}, svg);
+    const sg = el('linearGradient', { id: id + 'Stroke', x1: 0, y1: 0, x2: 1, y2: 0 }, defs);
+    el('stop', { offset: '0%', style: 'stop-color: var(--accent)' }, sg);
+    el('stop', { offset: '100%', style: 'stop-color: var(--accent-2)' }, sg);
+    const ag = el('linearGradient', { id: id + 'Area', x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+    el('stop', { offset: '0%', style: 'stop-color: var(--accent); stop-opacity: .32' }, ag);
+    el('stop', { offset: '100%', style: 'stop-color: var(--accent); stop-opacity: 0' }, ag);
+
+    const axis = el('g', { class: 'axis' }, svg);
+    [0, 0.25, 0.5, 0.75, 1].forEach((p) => {
+      el('line', { class: 'grid-line', x1: L, x2: W - R, y1: Y(p), y2: Y(p) }, svg);
+      el('text', { x: L - 8, y: Y(p) + 4, 'text-anchor': 'end' }, axis).textContent = Math.round(p * 100) + '%';
+    });
+    const ticks = 5;
+    for (let i = 0; i <= ticks; i++) {
+      const v = x0 + ((x1 - x0) * i) / ticks;
+      const nice = field === 'LoanAmount' ? '₹' + Math.round(v) + 'K' : short(Math.round(v / 100) * 100);
+      el('text', { x: X(v), y: H - 8, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle' }, axis).textContent = nice;
+    }
+    el('line', { class: 'threshold', x1: L, x2: W - R, y1: Y(0.5), y2: Y(0.5) }, svg);
+    el('text', { class: 'threshold-label', x: W - R, y: Y(0.5) + 14, 'text-anchor': 'end' }, svg).textContent = 'Approval line';
+
+    const pts = xs.map((x, i) => [X(x), Y(ps[i])]);
+    const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+    el('path', { class: 'area', d: `${line}L${X(x1)} ${Y(0)}L${X(x0)} ${Y(0)}Z`, fill: `url(#${id}Area)` }, svg);
+    el('path', { class: 'line', d: line, stroke: `url(#${id}Stroke)` }, svg);
+
+    // Current position
+    const cv = Math.min(x1, Math.max(x0, current));
+    let k = 0;
+    while (k < xs.length - 2 && xs[k + 1] < cv) k++;
+    const t = (cv - xs[k]) / (xs[k + 1] - xs[k]);
+    const cp = ps[k] + (ps[k + 1] - ps[k]) * Math.min(1, Math.max(0, t));
+    if (!reduceMotion) el('circle', { class: 'marker-pulse', cx: X(cv), cy: Y(cp), r: 7 }, svg);
+    el('circle', { class: 'marker-core', cx: X(cv), cy: Y(cp), r: 6 }, svg);
+    $(field === 'LoanAmount' ? '#loanNow' : '#incomeNow').textContent = `You: ${pct(cp)}`;
+
+    // Hover crosshair and click-to-set
+    const hl = el('line', { class: 'hover-line', y1: T, y2: H - B, visibility: 'hidden' }, svg);
+    const hd = el('circle', { class: 'hover-dot', r: 5, visibility: 'hidden' }, svg);
+    const hit = el('rect', { class: 'hit', x: L, y: T, width: W - L - R, height: H - T - B }, svg);
+    const nearest = (e) => {
+      const r = svg.getBoundingClientRect();
+      const vx = ((e.clientX - r.left) / r.width) * W;
+      let best = 0;
+      xs.forEach((x, i) => { if (Math.abs(X(x) - vx) < Math.abs(X(xs[best]) - vx)) best = i; });
+      return best;
+    };
+    hit.addEventListener('mousemove', (e) => {
+      const i = nearest(e);
+      [hl, hd].forEach((n) => n.setAttribute('visibility', 'visible'));
+      hl.setAttribute('x1', X(xs[i])); hl.setAttribute('x2', X(xs[i]));
+      hd.setAttribute('cx', X(xs[i])); hd.setAttribute('cy', Y(ps[i]));
+      showTip(`<b>${pct(ps[i])} odds</b><br>${label}: ${fmt(xs[i])}<br><small>Click to try this</small>`, e);
+    });
+    hit.addEventListener('mouseleave', () => { [hl, hd].forEach((n) => n.setAttribute('visibility', 'hidden')); hideTip(); });
+    hit.addEventListener('click', (e) => {
+      const i = nearest(e);
+      setValues({ [field]: xs[i] });
+      toast(`${label} set to ${fmt(xs[i])}.`, 'info', ICONS.spark);
+    });
+  }
+
+  // ---------- Saved scenarios ----------
+  const STORE = 'loansense-scenarios';
+  let scenarios = [];
+  try { scenarios = JSON.parse(localStorage.getItem(STORE) || '[]'); } catch (e) { scenarios = []; }
+  const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(scenarios)); } catch (e) {} };
+
+  $('#saveBtn').addEventListener('click', () => {
+    if (!lastResult) return;
+    const key = JSON.stringify(lastResult.data);
+    if (scenarios.some((s) => JSON.stringify(s.data) === key)) { toast('This scenario is already saved.', 'info', ICONS.bookmark); return; }
+    if (scenarios.length >= 4) scenarios.shift();
+    const used = new Set(scenarios.map((s) => s.name));
+    const name = 'Scenario ' + ['A', 'B', 'C', 'D', 'E'].find((l) => !used.has('Scenario ' + l));
+    scenarios.push({ name, data: lastResult.data, p: lastResult.out.approval_probability, emi: lastResult.out.affordability.emi });
+    persist();
+    renderScenarios();
+    $('#saveBtn').classList.add('saved');
+    $('#saveBtn').innerHTML = ICONS.check + `Saved as ${name}`;
+    toast(`${name} saved. Compare it in the What-if explorer.`, 'good', ICONS.bookmark);
+  });
+  $('#clearScenarios').addEventListener('click', () => { scenarios = []; persist(); renderScenarios(); });
+
+  function renderScenarios() {
+    const list = $('#scenarioList');
+    $('#scenarioCount').textContent = `${scenarios.length} of 4`;
+    $('#clearScenarios').hidden = !scenarios.length;
+    if (!scenarios.length) {
+      list.innerHTML = `<div class="sc-empty">${ICONS.bookmark}<span>Save a scenario from the results panel, change some details, then save another to compare them side by side.</span></div>`;
+      return;
+    }
+    const best = Math.max(...scenarios.map((s) => s.p));
+    list.replaceChildren(...scenarios.map((s, i) => {
+      const card = document.createElement('div');
+      const good = s.p >= 0.5;
+      const isBest = s.p === best && scenarios.length > 1;
+      card.className = 'scenario' + (isBest ? ' best' : '');
+      const d = s.data;
+      card.innerHTML = `
+        <div class="sc-top"><span class="sc-name">${s.name}</span>${isBest ? '<span class="sc-badge">Best odds</span>' : ''}</div>
+        <div class="sc-odds ${good ? 'good' : 'bad'}">${pct(s.p)}</div>
+        <div class="sc-meter"><i style="width:${s.p * 100}%;background:var(${good ? '--good' : '--bad'})"></i></div>
+        <div class="sc-facts">
+          <span>Income ${inr(+d.ApplicantIncome + +d.CoapplicantIncome)}</span>
+          <span>Loan ${inr(d.LoanAmount * 1000)}</span>
+          <span>${d.Loan_Amount_Term / 12} years</span>
+          <span>EMI ${inr(s.emi)}</span>
+          <span>Credit ${d.Credit_History === '1' ? 'good' : 'poor'}</span>
+        </div>
+        <div class="sc-actions"><button type="button" class="sc-load">Load</button><button type="button" class="sc-del" aria-label="Remove ${s.name}">Remove</button></div>`;
+      $('.sc-load', card).addEventListener('click', () => {
+        setValues(s.data);
+        $('#check').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+        toast(`${s.name} loaded.`, 'info', ICONS.bookmark);
+      });
+      $('.sc-del', card).addEventListener('click', () => { scenarios.splice(i, 1); persist(); renderScenarios(); });
+      return card;
+    }));
+  }
+  renderScenarios();
+
+  // ---------- Toasts ----------
+  function toast(text, kind = 'info', icon = ICONS.check) {
+    const stack = $('#toasts');
+    const t = document.createElement('div');
+    t.className = 'toast ' + kind;
+    t.innerHTML = `<span class="toast-icon">${icon}</span><span>${text}</span>`;
+    stack.appendChild(t);
+    while (stack.children.length > 3) stack.firstChild.remove();
+    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 320); }, 2600);
+  }
+
+  // ---------- Celebration ----------
+  function celebrate() {
+    if (reduceMotion) return;
+    const c = $('#confetti'), ctx = c.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const g = $('.gauge-wrap').getBoundingClientRect();
+    const ox = g.left + g.width / 2, oy = g.top + g.height / 2;
+    const css = getComputedStyle(document.documentElement);
+    const colors = ['--good', '--accent', '--accent-2', '--warn'].map((v) => css.getPropertyValue(v).trim());
+    const parts = Array.from({ length: 140 }, () => {
+      const a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 9;
+      return { x: ox, y: oy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 5, w: 5 + Math.random() * 6, h: 3 + Math.random() * 4,
+        r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, c: colors[Math.floor(Math.random() * colors.length)] };
+    });
+    const start = performance.now();
+    (function frame(t) {
+      const age = (t - start) / 1000;
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      ctx.globalAlpha = Math.max(0, 1 - age / 1.8);
+      parts.forEach((p) => {
+        p.vy += 0.32; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+      });
+      if (age < 1.8) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+    })(start);
+  }
+
+  // ---------- Mobile sticky result bar ----------
+  let resultVisible = true, workspaceVisible = true;
+  function syncSticky() { $('#stickyBar').hidden = resultVisible || !workspaceVisible || innerWidth > 900; }
+  function updateStickyBar(out) {
+    $('#sbValue').textContent = pct(out.approval_probability);
+    $('#sbVerdict').textContent = out.eligible ? 'likely approved' : 'likely rejected';
+    $('#sbDot').className = 'sb-dot ' + (out.eligible ? 'good' : 'bad');
+  }
+  new IntersectionObserver(([e]) => { resultVisible = e.isIntersecting; syncSticky(); }, { threshold: 0.12 }).observe(panel);
+  new IntersectionObserver(([e]) => { workspaceVisible = e.isIntersecting; syncSticky(); }).observe($('#check'));
+  addEventListener('resize', syncSticky);
+
+  // ---------- Insights: approval rate by group ----------
+  const grid = $('#segmentGrid');
+  insights.segments.forEach((seg) => {
+    const card = document.createElement('div');
+    card.className = 'segment';
+    card.innerHTML = `<h3>${seg.title}</h3>
+      <div><div class="seg-bars">${seg.rows.map((r) => `
+        <div class="seg-col"><b>${Math.round(r.rate * 100)}%</b><div class="seg-bar" style="height:${Math.max(4, r.rate * 130)}px"></div></div>`).join('')}
+      </div><div class="seg-labels">${seg.rows.map((r) => `<span>${r.label}</span>`).join('')}</div></div>`;
+    $$('.seg-col', card).forEach((col, i) => {
+      const r = seg.rows[i];
+      bindTip(col, () => `<b>${r.label}</b><br>${Math.round(r.rate * r.count)} of ${r.count} approved (${(r.rate * 100).toFixed(1)}%)`);
+    });
+    grid.appendChild(card);
+  });
+
+  schedule(0);
+})();
+
+</script>
+
+</body>
+</html>
